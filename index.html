@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Juego 1. Paso por la dungeon</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script type="text/javascript">
+
+        var config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        var muros;
+        var campeon;
+        var cursors;
+        var bloque_metal;
+        var scoreText;
+        var vidas = 2;
+        var gameover;
+        var rect;
+        var fosos;
+
+        var game = new Phaser.Game(config);
+
+        function preload() {
+            this.load.image('suelo', 'assets/suelo.png');
+            this.load.image('muro_h', 'assets/muro_h.png');
+            this.load.image('muro', 'assets/muro.png');
+            this.load.image('campeon', 'assets/campeon.png');
+            this.load.image('bloque_metal', 'assets/bloque_metal.png');
+            this.load.image('fuego', 'assets/fuego.png');
+        }
+
+
+        function create() {
+            // Fondo
+            this.add.image(400, 300, 'suelo');
+
+            
+
+            fosos = this.add.graphics({ fillStyle: { color: 0x000000 } });
+            let foso1 = new Phaser.Geom.Rectangle(300, 270, 215, 30);
+            let foso2 = new Phaser.Geom.Rectangle(300, 370, 215, 30);
+            fosos.fillRectShape(foso1);
+            fosos.fillRectShape(foso2);
+            //this.physics.add.existing(fosos);
+            let test = this.physics.add.group(foso1);
+            
+            // Muros del escenario
+            muros = this.physics.add.staticGroup();
+
+            muros.create(20, 300, 'muro');
+            muros.create(20, 300, 'muro');
+            muros.create(20, 300, 'muro');
+            muros.create(20, 500, 'muro');
+            muros.create(285, 300, 'muro');
+            muros.create(20, 300, 'muro');
+            muros.create(20, 300, 'muro');
+            muros.create(20, 300, 'muro');
+            muros.create(20, 300, 'muro');
+            muros.create(20, 100, 'muro');
+            muros.create(285, 300, 'muro');
+            muros.create(285, 500, 'muro');
+            muros.create(535, 100, 'muro');
+            muros.create(535, 300, 'muro');
+            muros.create(780, 100, 'muro');
+            muros.create(780, 300, 'muro');
+            muros.create(780, 500, 'muro');
+            muros.create(90, 20, 'muro_h');
+            muros.create(190, 20, 'muro_h');
+            muros.create(290, 20, 'muro_h');
+            muros.create(390, 20, 'muro_h');
+            muros.create(490, 20, 'muro_h');
+            muros.create(320, 580, 'muro_h');
+            muros.create(420, 580, 'muro_h');
+            muros.create(520, 580, 'muro_h');
+            muros.create(620, 580, 'muro_h');
+            muros.create(720, 580, 'muro_h');
+
+            // Personaje
+            campeon = this.physics.add.image(150, 570, 'campeon');
+
+            // Bloques de metal que se mueven
+            bloque_metal1 = this.physics.add.image(70, 300, 'bloque_metal').setImmovable(true);
+            bloque_metal2 = this.physics.add.image(240, 200, 'bloque_metal').setImmovable(true);
+
+            // Bola de fuego
+            bolaDeFuego = this.physics.add.image(340, 300, 'fuego').setImmovable(true);
+            graphics = this.add.graphics();
+            trayectoBolaFuego = new Phaser.Curves.Path(450, 130);
+            trayectoBolaFuego.circleTo(75);
+            bolaFuego = { t: 0, vec: new Phaser.Math.Vector2() };
+
+            // Movimiento bola de fuego
+            this.tweens.add({ targets: bolaFuego, t: 1, ease: 'Linear', duration: 1000, repeat: -1 });
+
+            // Movimientos bloques de metal
+            this.tweens.add({ targets: bloque_metal1, x: 240, duration: 1000, ease: 'Power1', yoyo: true, repeat: -1 });
+            this.tweens.add({ targets: bloque_metal2, x: 80, duration: 1000, ease: 'normal', yoyo: true, repeat: -1 });
+
+            // Colisiones
+            campeon.setCollideWorldBounds(true);
+
+            this.physics.add.collider(campeon, muros);
+            this.physics.add.collider(campeon, bloque_metal1, contacto, null, this);
+            this.physics.add.collider(campeon, bloque_metal2, contacto, null, this);
+            
+            this.physics.add.collider(campeon, fosos, contacto, null, this);
+                       
+            this.physics.add.collider(campeon, bolaFuego, contacto, null, this);
+
+            // Teclas
+            cursors = this.input.keyboard.createCursorKeys();
+            
+            //Textos
+            scoreText = this.add.text(16, 8, null, { fontSize: '32px', fill: '#fff' });
+            gameover = this.add.text(315, 320, null, { fontSize: '32px', fill: '#000' });
+        }
+
+        function update() {
+            scoreText.setText(`Vidas: ${vidas}`);
+
+            // Movimiento campeon con teclas
+            campeon.setVelocity(0);
+            if (cursors.left.isDown) {
+                campeon.setVelocityX(-200);
+            }
+            else if (cursors.right.isDown) {
+                campeon.setVelocityX(200);
+            }
+            if (cursors.up.isDown) {
+                campeon.setVelocityY(-200);
+            }
+            else if (cursors.down.isDown) {
+                campeon.setVelocityY(200);
+            }
+
+            // Dibujado de la bola de fuego
+            graphics.clear();
+            trayectoBolaFuego.getPoint(bolaFuego.t, bolaFuego.vec);
+            graphics.fillStyle(0xff0000, 1);
+            graphics.fillCircle(bolaFuego.vec.x, bolaFuego.vec.y, 15);
+        }
+
+        function contacto() {
+            this.physics.pause();
+            campeon.setTint(0xff0000);
+
+            gameOver = true;
+            vidas = vidas - 1;
+            if (vidas == 0) {
+                gameover.setText('Game Over!');
+            } else {
+                this.time.delayedCall(1500, this.scene.restart, [], this.scene);
+            }
+        }
+    </script>
+</body>
+
+</html>
